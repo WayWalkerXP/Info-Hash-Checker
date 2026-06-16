@@ -81,22 +81,31 @@
   <button id="save">Save</button>
 
   <fieldset>
-    <legend>Backup and Restore</legend>
+  <legend>Backup and Restore</legend>
 
-    <button id="exportBackup">Export Backup</button>
+  <button id="exportBackup">Export Backup</button>
 
-    <label class="radio-label">
-      <input type="radio" name="restoreMode" value="append" checked>
-      Append info hashes only
-    </label>
+  <button id="importBackup">Restore Backup</button>
 
-    <label class="radio-label">
-      <input type="radio" name="restoreMode" value="replace">
-      Replace current data
-    </label>
+  <input
+    id="importBackupFile"
+    class="file-input"
+    type="file"
+    accept="application/json,.json">
 
-    <input id="importBackupFile" class="file-input" type="file" accept="application/json,.json">
-    <button id="importBackup">Import Backup</button>
+  <div style="margin-top:12px;">
+    <strong>Restore Mode</strong>
+  </div>
+
+  <label class="radio-label">
+    <input type="radio" name="restoreMode" value="append" checked>
+    Append info hashes only
+  </label>
+
+  <label class="radio-label">
+    <input type="radio" name="restoreMode" value="replace">
+    Replace current data
+  </label>
   </fieldset>
 
   <div id="status"></div>
