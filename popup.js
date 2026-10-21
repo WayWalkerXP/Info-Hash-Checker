@@ -1,6 +1,10 @@
+const InfohashAbs = globalThis.InfohashAbs;
+
 const DEFAULT_SETTINGS = {
   bookUrl: "",
-  showLastVisitBox: true
+  showLastVisitBox: true,
+  absServerUrl: "",
+  absApiKey: ""
 };
 
 const INFO_HASH_KEY = "infoHashes";
@@ -73,19 +77,65 @@ async function loadSettings() {
   document.getElementById("bookUrl").value = settings.bookUrl || "";
   document.getElementById("showLastVisitBox").checked =
     Boolean(settings.showLastVisitBox);
+  document.getElementById("absServerUrl").value = settings.absServerUrl || "";
+  document.getElementById("absApiKey").value = settings.absApiKey || "";
+}
+
+function readAbsForm() {
+  const serverInput = document.getElementById("absServerUrl").value;
+  const serverUrl = InfohashAbs.normalizeServerUrl(serverInput);
+  const apiKey = document.getElementById("absApiKey").value.trim();
+
+  return { serverUrl, apiKey };
 }
 
 async function saveSettings() {
   const bookUrl = document.getElementById("bookUrl").value.trim();
   const showLastVisitBox =
     document.getElementById("showLastVisitBox").checked;
+  const { serverUrl, apiKey } = readAbsForm();
+
+  if (serverUrl === null) {
+    showStatus("Enter a valid http or https Audiobookshelf URL.", true);
+    return;
+  }
 
   await chrome.storage.local.set({
     bookUrl,
-    showLastVisitBox
+    showLastVisitBox,
+    absServerUrl: serverUrl,
+    absApiKey: apiKey
   });
 
+  if (serverUrl) {
+    document.getElementById("absServerUrl").value = serverUrl;
+  }
+
   showStatus("Saved.", false, 1500);
+}
+
+async function testAbsConnection() {
+  const { serverUrl, apiKey } = readAbsForm();
+
+  if (serverUrl === null) {
+    showStatus("Enter a valid http or https Audiobookshelf URL.", true);
+    return;
+  }
+
+  showStatus("Testing connection...");
+
+  try {
+    const result = await chrome.runtime.sendMessage({
+      type: "abs-test",
+      serverUrl,
+      apiKey
+    });
+
+    showStatus(result?.error || result?.message || "Connection test failed.", !result?.ok);
+  } catch (error) {
+    console.error("[InfoHash Tracker] Audiobookshelf test failed:", error);
+    showStatus("Connection test failed. Reload the extension and try again.", true);
+  }
 }
 
 async function exportBackup() {
@@ -186,6 +236,7 @@ async function importBackup() {
 }
 
 document.getElementById("save").addEventListener("click", saveSettings);
+document.getElementById("absTest").addEventListener("click", testAbsConnection);
 document.getElementById("exportBackup").addEventListener("click", exportBackup);
 document.getElementById("importBackup").addEventListener("click", importBackup);
 

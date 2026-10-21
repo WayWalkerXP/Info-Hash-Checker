@@ -15,7 +15,8 @@
       margin-top: 10px;
     }
 
-    input[type="text"] {
+    input[type="text"],
+    input[type="password"] {
       width: 100%;
       box-sizing: border-box;
       padding: 6px;
@@ -78,7 +79,14 @@
     </label>
   </div>
 
+  <label for="absServerUrl">Audiobookshelf server</label>
+  <input id="absServerUrl" type="text" placeholder="https://library.example.com" autocomplete="off">
+
+  <label for="absApiKey">Audiobookshelf API key</label>
+  <input id="absApiKey" type="password" autocomplete="off">
+
   <button id="save">Save</button>
+  <button id="absTest">Test Audiobookshelf connection</button>
 
   <fieldset>
   <legend>Backup and Restore</legend>
@@ -110,6 +118,7 @@
 
   <div id="status"></div>
 
+  <script src="abs-match.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

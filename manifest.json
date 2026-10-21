@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
   "name": "InfoHash Tracker",
-  "version": "1.1",
-  "description": "Tracks clicked magnet info hashes and marks pages already downloaded.",
+  "version": "1.2",
+  "description": "Tracks clicked magnet info hashes, marks pages already downloaded, and checks Audiobookshelf for the same book.",
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "action": {
     "default_title": "InfoHash Tracker",
@@ -26,7 +29,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["check-infohash.js"]
+      "js": ["abs-match.js", "check-infohash.js"]
     }
   ]
 }

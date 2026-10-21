@@ -1,9 +1,153 @@
 (() => {
+  const InfohashAbs = globalThis.InfohashAbs;
   const SITE_NAME = "torrent_site";
 
   function urlMatchesConfiguredBookUrl(currentUrl, bookUrl) {
     if (!bookUrl) return false;
     return currentUrl.startsWith(bookUrl);
+  }
+
+  function createMagnetLink(infoHash) {
+    return `magnet:?xt=urn:btih:${infoHash}`;
+  }
+
+  function linkInfoHashCell(cell, infoHash) {
+    if (cell.querySelector(`a[href="${createMagnetLink(infoHash)}"]`)) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = createMagnetLink(infoHash);
+    link.textContent = infoHash;
+
+    cell.textContent = "";
+    cell.appendChild(link);
+  }
+
+  function findBookIdentity() {
+    const heading = document.querySelector(".postTitle h1");
+    if (!heading) return null;
+
+    const authors = [];
+    for (const node of document.querySelectorAll("span.author")) {
+      const name = node.textContent.replace(/\s+/g, " ").trim();
+      if (name && !authors.includes(name)) authors.push(name);
+    }
+
+    const rawTitle = heading.textContent.replace(/\s+/g, " ").trim();
+    const title = InfohashAbs.stripTrailingAuthors(rawTitle, authors);
+    if (!title) return null;
+
+    return { title, authors };
+  }
+
+  function renderDuplicateMatches(results, matches) {
+    results.textContent = "";
+
+    const summary = document.createElement("div");
+    summary.style.fontWeight = "bold";
+    summary.style.marginBottom = "8px";
+    summary.textContent = matches.length === 1
+      ? "1 possible duplicate in Audiobookshelf"
+      : `${matches.length} possible duplicates in Audiobookshelf`;
+    results.appendChild(summary);
+
+    for (const match of matches) {
+      const row = document.createElement("div");
+      row.style.marginTop = "8px";
+
+      const link = document.createElement("a");
+      link.href = match.itemUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = match.title;
+      link.style.color = "gold";
+
+      row.appendChild(link);
+
+      const detail = document.createElement("div");
+      const author = match.authorName || "Unknown author";
+      detail.textContent = match.authorMatches
+        ? author
+        : `${author} (author differs)`;
+      row.appendChild(detail);
+      results.appendChild(row);
+    }
+  }
+
+  function addLibraryCheckButton() {
+    if (document.getElementById("infohash-tracker-abs-check")) return;
+
+    const identity = findBookIdentity();
+    const heading = document.querySelector(".postTitle h1");
+    if (!identity || !heading) return;
+
+    const wrap = document.createElement("div");
+    wrap.id = "infohash-tracker-abs-check";
+    wrap.style.margin = "12px 0";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Check Audiobookshelf";
+    button.style.background = "gold";
+    button.style.color = "black";
+    button.style.border = "2px solid black";
+    button.style.borderRadius = "6px";
+    button.style.padding = "8px 12px";
+    button.style.fontWeight = "bold";
+    button.style.cursor = "pointer";
+
+    const results = document.createElement("div");
+    results.style.marginTop = "10px";
+    results.style.maxWidth = "520px";
+    results.style.background = "#222";
+    results.style.color = "#fff";
+    results.style.padding = "10px 12px";
+    results.style.border = "2px solid gold";
+    results.style.borderRadius = "8px";
+    results.style.fontSize = "13px";
+    results.style.lineHeight = "1.35";
+    results.style.display = "none";
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Checking...";
+      results.style.display = "block";
+      results.textContent = `Checking “${identity.title}”...`;
+
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: "abs-check",
+          title: identity.title,
+          authors: identity.authors
+        });
+
+        if (!response?.ok) {
+          results.textContent = response?.error || "Lookup failed.";
+          return;
+        }
+
+        if (!response.matches.length) {
+          const who = identity.authors.length
+            ? ` by ${identity.authors.join(", ")}`
+            : "";
+          results.textContent = `No likely duplicate for “${identity.title}”${who}.`;
+          return;
+        }
+
+        renderDuplicateMatches(results, response.matches);
+      } catch (error) {
+        console.error("[InfoHash Tracker] Audiobookshelf check failed:", error);
+        results.textContent = "Lookup failed. Reload the extension and try again.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Check Audiobookshelf";
+      }
+    });
+
+    wrap.appendChild(button);
+    wrap.appendChild(results);
+    heading.insertAdjacentElement("afterend", wrap);
   }
 
   function findInfoHashOnPage() {
@@ -16,6 +160,7 @@
         const possibleHash = cells[i + 1].textContent.trim().toLowerCase();
 
         if (/^[a-f0-9]{40}$/.test(possibleHash)) {
+          linkInfoHashCell(cells[i + 1], possibleHash);
           return possibleHash;
         }
       }
@@ -145,6 +290,8 @@
     if (settings.showLastVisitBox) {
       await addLastVisitPanel();
     }
+
+    addLibraryCheckButton();
 
     const pageHash = findInfoHashOnPage();
 
